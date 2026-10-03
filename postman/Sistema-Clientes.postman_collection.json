@@ -1,0 +1,49 @@
+{
+  "info": {
+    "name": "Sistema-Clientes",
+    "description": "Coleção da API Sistema de Gestão de Vendas - Clientes, Produtos, Usuários e Pedidos.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {"name":"Clientes","item":[
+      {"name":"GET - Listar clientes","request":{"method":"GET","header":[],"url":{"raw":"http://localhost:3000/clientes"}}},
+      {"name":"GET - Buscar cliente por ID","request":{"method":"GET","header":[],"url":{"raw":"http://localhost:3000/clientes/1"}}},
+      {"name":"POST - Cadastrar cliente","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"nome\": \"Cliente Teste\",\n  \"email\": \"cliente.teste@email.com\",\n  \"telefone\": \"47999999999\"\n}"},"url":{"raw":"http://localhost:3000/clientes"}}},
+      {"name":"PUT - Atualizar cliente","request":{"method":"PUT","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"nome\": \"Cliente Atualizado\",\n  \"email\": \"cliente.atualizado@email.com\",\n  \"telefone\": \"47988888888\"\n}"},"url":{"raw":"http://localhost:3000/clientes/1"}}},
+      {"name":"PATCH - Atualizar cliente","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"telefone\": \"47977777777\"\n}"},"url":{"raw":"http://localhost:3000/clientes/1"}}},
+      {"name":"DELETE - Excluir cliente","request":{"method":"DELETE","header":[],"url":{"raw":"http://localhost:3000/clientes/1"}}},
+      {"name":"POST - Cliente sem email (400)","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"nome\": \"Cliente Sem Email\"\n}"},"url":{"raw":"http://localhost:3000/clientes"}}}
+    ]},
+    {"name":"Produtos","item":[
+      {"name":"GET - Listar produtos","request":{"method":"GET","header":[],"url":{"raw":"http://localhost:3000/produtos"}}},
+      {"name":"GET - Buscar produto por ID","request":{"method":"GET","header":[],"url":{"raw":"http://localhost:3000/produtos/1"}}},
+      {"name":"POST - Cadastrar produto","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"nome\": \"Produto Teste\",\n  \"descricao\": \"Produto utilizado para testes da API\",\n  \"preco\": 50.00,\n  \"estoque\": 10\n}"},"url":{"raw":"http://localhost:3000/produtos"}}},
+      {"name":"PUT - Atualizar produto","request":{"method":"PUT","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"nome\": \"Produto Atualizado\",\n  \"descricao\": \"Produto atualizado para teste\",\n  \"preco\": 55.00,\n  \"estoque\": 10\n}"},"url":{"raw":"http://localhost:3000/produtos/1"}}},
+      {"name":"PATCH - Atualizar produto","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"preco\": 60.00\n}"},"url":{"raw":"http://localhost:3000/produtos/1"}}},
+      {"name":"DELETE - Excluir produto","request":{"method":"DELETE","header":[],"url":{"raw":"http://localhost:3000/produtos/1"}}},
+      {"name":"POST - Produto com preço negativo (400)","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"nome\": \"Produto Inválido\",\n  \"descricao\": \"Teste\",\n  \"preco\": -10,\n  \"estoque\": 5\n}"},"url":{"raw":"http://localhost:3000/produtos"}}}
+    ]},
+    {"name":"Usuários","item":[
+      {"name":"POST - Cadastrar usuário","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"nome\": \"Administrador Teste\",\n  \"email\": \"admin.teste@email.com\",\n  \"senha\": \"123456\",\n  \"perfil\": \"admin\",\n  \"status\": \"ativo\"\n}"},"url":{"raw":"http://localhost:3000/usuarios"}}},
+      {"name":"GET - Listar usuários","request":{"method":"GET","header":[],"url":{"raw":"http://localhost:3000/usuarios"}}},
+      {"name":"GET - Buscar usuário por ID","request":{"method":"GET","header":[],"url":{"raw":"http://localhost:3000/usuarios/1"}}},
+      {"name":"PUT - Atualizar usuário","request":{"method":"PUT","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"nome\": \"Administrador Atualizado\",\n  \"email\": \"admin.atualizado@email.com\",\n  \"senha\": \"123456\",\n  \"perfil\": \"admin\",\n  \"status\": \"ativo\"\n}"},"url":{"raw":"http://localhost:3000/usuarios/1"}}},
+      {"name":"PATCH - Atualizar usuário","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"status\": \"inativo\"\n}"},"url":{"raw":"http://localhost:3000/usuarios/1"}}},
+      {"name":"DELETE - Excluir usuário","request":{"method":"DELETE","header":[],"url":{"raw":"http://localhost:3000/usuarios/1"}}},
+      {"name":"POST - Usuário sem senha (400)","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"nome\": \"Usuário Sem Senha\",\n  \"email\": \"sem.senha@email.com\"\n}"},"url":{"raw":"http://localhost:3000/usuarios"}}}
+    ]},
+    {"name":"Pedidos","item":[
+      {"name":"POST - Criar pedido","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"cliente_id\": 1\n}"},"url":{"raw":"http://localhost:3000/pedidos"}}},
+      {"name":"GET - Listar pedidos","request":{"method":"GET","header":[],"url":{"raw":"http://localhost:3000/pedidos"}}},
+      {"name":"GET - Buscar pedido por ID","request":{"method":"GET","header":[],"url":{"raw":"http://localhost:3000/pedidos/1"}}},
+      {"name":"PATCH - Alterar status do pedido","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"status\": \"pago\"\n}"},"url":{"raw":"http://localhost:3000/pedidos/1/status"}}},
+      {"name":"POST - Adicionar item ao pedido","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"produto_id\": 1,\n  \"quantidade\": 2\n}"},"url":{"raw":"http://localhost:3000/pedidos/1/itens"}}},
+      {"name":"DELETE - Remover item do pedido","request":{"method":"DELETE","header":[],"url":{"raw":"http://localhost:3000/pedidos/1/itens/1"}}},
+      {"name":"POST - Pedido com cliente inexistente (404)","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"cliente_id\": 9999\n}"},"url":{"raw":"http://localhost:3000/pedidos"}}},
+      {"name":"PATCH - Status inválido (400)","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"status\": \"invalido\"\n}"},"url":{"raw":"http://localhost:3000/pedidos/1/status"}}},
+      {"name":"POST - Produto inexistente no item (404)","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"produto_id\": 9999,\n  \"quantidade\": 1\n}"},"url":{"raw":"http://localhost:3000/pedidos/1/itens"}}},
+      {"name":"POST - Quantidade inválida (400)","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"produto_id\": 1,\n  \"quantidade\": 0\n}"},"url":{"raw":"http://localhost:3000/pedidos/1/itens"}}},
+      {"name":"POST - Estoque insuficiente (400)","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"produto_id\": 1,\n  \"quantidade\": 999\n}"},"url":{"raw":"http://localhost:3000/pedidos/1/itens"}}}
+    ]}
+  ]
+}

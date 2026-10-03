@@ -10,6 +10,7 @@ API desenvolvida em Node.js, Express e MySQL para gerenciamento de clientes, pro
 - mysql2
 - dotenv
 - bcryptjs
+- Nodemon
 
 ## Estrutura do projeto
 

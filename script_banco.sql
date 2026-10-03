@@ -115,14 +115,5 @@ VALUES
 
 
 -- USUÁRIO INICIAL
--- Senha armazenada como hash bcrypt.
--- Senha original para teste: 123456
-INSERT INTO usuarios (nome, email, senha, perfil, status)
-VALUES
-    (
-        'Administrador',
-        'admin@sistema.com',
-        '$2a$10$7EqJtq98hPqEX7fNZaFWoOe5h7wZ9KJqY7f7V7f7V7f7V7f7V7f7V',
-        'admin',
-        'ativo'
-    );
+-- A senha será definida pela API no cadastro de usuários.
+-- Nenhuma senha em texto puro é armazenada neste script.

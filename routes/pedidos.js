@@ -1,9 +1,16 @@
 const express = require('express');
+
 const router = express.Router();
 
 const db = require('../config/database');
 
 const { validarCampos, validarId } = require('../middleware/validar');
+
+const statusPermitidos = [
+    'pendente',
+    'pago',
+    'cancelado'
+];
 
 // Criar pedido
 router.post(
@@ -11,9 +18,12 @@ router.post(
     validarCampos(['cliente_id']),
     async (req, res, next) => {
         try {
-            const { cliente_id } = req.body;
+            const clienteId = Number(req.body.cliente_id);
 
-            if (!Number.isInteger(Number(cliente_id)) || Number(cliente_id) <= 0) {
+            if (
+                !Number.isInteger(clienteId) ||
+                clienteId <= 0
+            ) {
                 return res.status(400).json({
                     erro: 'cliente_id inválido.'
                 });
@@ -21,7 +31,7 @@ router.post(
 
             const [clientes] = await db.query(
                 'SELECT id FROM clientes WHERE id = ?',
-                [cliente_id]
+                [clienteId]
             );
 
             if (clientes.length === 0) {
@@ -31,9 +41,10 @@ router.post(
             }
 
             const [resultado] = await db.query(
-                `INSERT INTO pedidos (cliente_id)
+                `INSERT INTO pedidos
+                 (cliente_id)
                  VALUES (?)`,
-                [cliente_id]
+                [clienteId]
             );
 
             const [pedidos] = await db.query(
@@ -132,30 +143,29 @@ router.patch('/:id/status', validarId, async (req, res, next) => {
     try {
         const { status } = req.body;
 
-        const statusPermitidos = [
-            'pendente',
-            'pago',
-            'cancelado'
-        ];
-
         if (!statusPermitidos.includes(status)) {
             return res.status(400).json({
                 erro: 'Status inválido. Use: pendente, pago ou cancelado.'
             });
         }
 
-        const [resultado] = await db.query(
+        const [existente] = await db.query(
+            'SELECT id FROM pedidos WHERE id = ?',
+            [req.params.id]
+        );
+
+        if (existente.length === 0) {
+            return res.status(404).json({
+                erro: 'Pedido não encontrado.'
+            });
+        }
+
+        await db.query(
             `UPDATE pedidos
              SET status = ?
              WHERE id = ?`,
             [status, req.params.id]
         );
-
-        if (resultado.affectedRows === 0) {
-            return res.status(404).json({
-                erro: 'Pedido não encontrado.'
-            });
-        }
 
         const [pedidos] = await db.query(
             `SELECT
@@ -183,14 +193,17 @@ router.post(
     validarId,
     validarCampos(['produto_id', 'quantidade']),
     async (req, res, next) => {
-        const connection = await db.getConnection();
+        let connection;
+        let transactionStarted = false;
 
         try {
-            const { produto_id, quantidade } = req.body;
+            const pedidoId = Number(req.params.id);
+            const produtoId = Number(req.body.produto_id);
+            const quantidade = Number(req.body.quantidade);
 
             if (
-                !Number.isInteger(Number(produto_id)) ||
-                Number(produto_id) <= 0
+                !Number.isInteger(produtoId) ||
+                produtoId <= 0
             ) {
                 return res.status(400).json({
                     erro: 'produto_id inválido.'
@@ -198,26 +211,40 @@ router.post(
             }
 
             if (
-                !Number.isInteger(Number(quantidade)) ||
-                Number(quantidade) <= 0
+                !Number.isInteger(quantidade) ||
+                quantidade <= 0
             ) {
                 return res.status(400).json({
                     erro: 'A quantidade deve ser um número inteiro maior que zero.'
                 });
             }
 
+            connection = await db.getConnection();
+
+            await connection.beginTransaction();
+            transactionStarted = true;
+
             const [pedidos] = await connection.query(
-                'SELECT id, status FROM pedidos WHERE id = ?',
-                [req.params.id]
+                `SELECT id, status
+                 FROM pedidos
+                 WHERE id = ?
+                 FOR UPDATE`,
+                [pedidoId]
             );
 
             if (pedidos.length === 0) {
+                await connection.rollback();
+                transactionStarted = false;
+
                 return res.status(404).json({
                     erro: 'Pedido não encontrado.'
                 });
             }
 
             if (pedidos[0].status === 'cancelado') {
+                await connection.rollback();
+                transactionStarted = false;
+
                 return res.status(400).json({
                     erro: 'Não é possível adicionar itens a um pedido cancelado.'
                 });
@@ -226,11 +253,15 @@ router.post(
             const [produtos] = await connection.query(
                 `SELECT id, preco, estoque
                  FROM produtos
-                 WHERE id = ?`,
-                [produto_id]
+                 WHERE id = ?
+                 FOR UPDATE`,
+                [produtoId]
             );
 
             if (produtos.length === 0) {
+                await connection.rollback();
+                transactionStarted = false;
+
                 return res.status(404).json({
                     erro: 'Produto não encontrado.'
                 });
@@ -238,21 +269,22 @@ router.post(
 
             const produto = produtos[0];
 
-            if (produto.estoque < Number(quantidade)) {
+            if (produto.estoque < quantidade) {
+                await connection.rollback();
+                transactionStarted = false;
+
                 return res.status(400).json({
                     erro: 'Estoque insuficiente.'
                 });
             }
-
-            await connection.beginTransaction();
 
             await connection.query(
                 `INSERT INTO itens_pedido
                  (pedido_id, produto_id, quantidade, preco_unitario)
                  VALUES (?, ?, ?, ?)`,
                 [
-                    req.params.id,
-                    produto_id,
+                    pedidoId,
+                    produtoId,
                     quantidade,
                     produto.preco
                 ]
@@ -262,7 +294,7 @@ router.post(
                 `UPDATE produtos
                  SET estoque = estoque - ?
                  WHERE id = ?`,
-                [quantidade, produto_id]
+                [quantidade, produtoId]
             );
 
             const [total] = await connection.query(
@@ -272,17 +304,18 @@ router.post(
                  ) AS valor_total
                  FROM itens_pedido
                  WHERE pedido_id = ?`,
-                [req.params.id]
+                [pedidoId]
             );
 
             await connection.query(
                 `UPDATE pedidos
                  SET valor_total = ?
                  WHERE id = ?`,
-                [total[0].valor_total, req.params.id]
+                [total[0].valor_total, pedidoId]
             );
 
             await connection.commit();
+            transactionStarted = false;
 
             const [itens] = await connection.query(
                 `SELECT
@@ -297,7 +330,7 @@ router.post(
                  INNER JOIN produtos pr ON pr.id = i.produto_id
                  WHERE i.pedido_id = ?
                  ORDER BY i.id`,
-                [req.params.id]
+                [pedidoId]
             );
 
             res.status(201).json({
@@ -306,10 +339,15 @@ router.post(
                 itens
             });
         } catch (err) {
-            await connection.rollback();
+            if (connection && transactionStarted) {
+                await connection.rollback();
+            }
+
             next(err);
         } finally {
-            connection.release();
+            if (connection) {
+                connection.release();
+            }
         }
     }
 );
@@ -318,7 +356,8 @@ router.post(
 router.delete(
     '/:id_pedido/itens/:id_item',
     async (req, res, next) => {
-        const connection = await db.getConnection();
+        let connection;
+        let transactionStarted = false;
 
         try {
             const pedidoId = Number(req.params.id_pedido);
@@ -335,6 +374,28 @@ router.delete(
                 });
             }
 
+            connection = await db.getConnection();
+
+            await connection.beginTransaction();
+            transactionStarted = true;
+
+            const [pedidos] = await connection.query(
+                `SELECT id, status
+                 FROM pedidos
+                 WHERE id = ?
+                 FOR UPDATE`,
+                [pedidoId]
+            );
+
+            if (pedidos.length === 0) {
+                await connection.rollback();
+                transactionStarted = false;
+
+                return res.status(404).json({
+                    erro: 'Pedido não encontrado.'
+                });
+            }
+
             const [itens] = await connection.query(
                 `SELECT
                     id,
@@ -342,11 +403,15 @@ router.delete(
                     produto_id,
                     quantidade
                  FROM itens_pedido
-                 WHERE id = ? AND pedido_id = ?`,
+                 WHERE id = ? AND pedido_id = ?
+                 FOR UPDATE`,
                 [itemId, pedidoId]
             );
 
             if (itens.length === 0) {
+                await connection.rollback();
+                transactionStarted = false;
+
                 return res.status(404).json({
                     erro: 'Item não encontrado nesse pedido.'
                 });
@@ -354,7 +419,22 @@ router.delete(
 
             const item = itens[0];
 
-            await connection.beginTransaction();
+            const [produtos] = await connection.query(
+                `SELECT id
+                 FROM produtos
+                 WHERE id = ?
+                 FOR UPDATE`,
+                [item.produto_id]
+            );
+
+            if (produtos.length === 0) {
+                await connection.rollback();
+                transactionStarted = false;
+
+                return res.status(404).json({
+                    erro: 'Produto relacionado ao item não encontrado.'
+                });
+            }
 
             await connection.query(
                 `UPDATE produtos
@@ -387,16 +467,22 @@ router.delete(
             );
 
             await connection.commit();
+            transactionStarted = false;
 
             res.status(200).json({
                 mensagem: 'Item removido do pedido com sucesso.',
                 valor_total: total[0].valor_total
             });
         } catch (err) {
-            await connection.rollback();
+            if (connection && transactionStarted) {
+                await connection.rollback();
+            }
+
             next(err);
         } finally {
-            connection.release();
+            if (connection) {
+                connection.release();
+            }
         }
     }
 );

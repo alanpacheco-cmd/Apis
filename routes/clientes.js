@@ -9,7 +9,9 @@ const { validarCampos, validarId } = require('../middleware/validar');
 router.get('/', async (req, res, next) => {
     try {
         const [clientes] = await db.query(
-            'SELECT id, nome, email, telefone, criado_em FROM clientes ORDER BY id'
+            `SELECT id, nome, email, telefone, criado_em
+             FROM clientes
+             ORDER BY id`
         );
 
         res.status(200).json(clientes);
@@ -18,11 +20,13 @@ router.get('/', async (req, res, next) => {
     }
 });
 
-// Buscar um cliente pelo ID
+// Buscar cliente pelo ID
 router.get('/:id', validarId, async (req, res, next) => {
     try {
         const [clientes] = await db.query(
-            'SELECT id, nome, email, telefone, criado_em FROM clientes WHERE id = ?',
+            `SELECT id, nome, email, telefone, criado_em
+             FROM clientes
+             WHERE id = ?`,
             [req.params.id]
         );
 
@@ -47,12 +51,20 @@ router.post(
             const { nome, email, telefone } = req.body;
 
             const [resultado] = await db.query(
-                'INSERT INTO clientes (nome, email, telefone) VALUES (?, ?, ?)',
-                [nome, email, telefone || null]
+                `INSERT INTO clientes
+                (nome, email, telefone)
+                VALUES (?, ?, ?)`,
+                [
+                    nome.trim(),
+                    email.trim(),
+                    telefone ? telefone.trim() : null
+                ]
             );
 
             const [clientes] = await db.query(
-                'SELECT id, nome, email, telefone, criado_em FROM clientes WHERE id = ?',
+                `SELECT id, nome, email, telefone, criado_em
+                 FROM clientes
+                 WHERE id = ?`,
                 [resultado.insertId]
             );
 
@@ -73,8 +85,15 @@ router.put(
             const { nome, email, telefone } = req.body;
 
             const [resultado] = await db.query(
-                'UPDATE clientes SET nome = ?, email = ?, telefone = ? WHERE id = ?',
-                [nome, email, telefone || null, req.params.id]
+                `UPDATE clientes
+                 SET nome = ?, email = ?, telefone = ?
+                 WHERE id = ?`,
+                [
+                    nome.trim(),
+                    email.trim(),
+                    telefone ? telefone.trim() : null,
+                    req.params.id
+                ]
             );
 
             if (resultado.affectedRows === 0) {
@@ -84,7 +103,9 @@ router.put(
             }
 
             const [clientes] = await db.query(
-                'SELECT id, nome, email, telefone, criado_em FROM clientes WHERE id = ?',
+                `SELECT id, nome, email, telefone, criado_em
+                 FROM clientes
+                 WHERE id = ?`,
                 [req.params.id]
             );
 
@@ -98,14 +119,34 @@ router.put(
 // Atualização parcial
 router.patch('/:id', validarId, async (req, res, next) => {
     try {
-        const camposPermitidos = ['nome', 'email', 'telefone'];
+        const camposPermitidos = [
+            'nome',
+            'email',
+            'telefone'
+        ];
+
         const campos = [];
         const valores = [];
 
         for (const campo of camposPermitidos) {
             if (req.body[campo] !== undefined) {
+                let valor = req.body[campo];
+
+                if (
+                    typeof valor === 'string' &&
+                    valor.trim() === ''
+                ) {
+                    return res.status(400).json({
+                        erro: `O campo '${campo}' não pode ficar vazio.`
+                    });
+                }
+
+                if (typeof valor === 'string') {
+                    valor = valor.trim();
+                }
+
                 campos.push(`${campo} = ?`);
-                valores.push(req.body[campo]);
+                valores.push(valor);
             }
         }
 
@@ -118,7 +159,9 @@ router.patch('/:id', validarId, async (req, res, next) => {
         valores.push(req.params.id);
 
         const [resultado] = await db.query(
-            `UPDATE clientes SET ${campos.join(', ')} WHERE id = ?`,
+            `UPDATE clientes
+             SET ${campos.join(', ')}
+             WHERE id = ?`,
             valores
         );
 
@@ -129,7 +172,9 @@ router.patch('/:id', validarId, async (req, res, next) => {
         }
 
         const [clientes] = await db.query(
-            'SELECT id, nome, email, telefone, criado_em FROM clientes WHERE id = ?',
+            `SELECT id, nome, email, telefone, criado_em
+             FROM clientes
+             WHERE id = ?`,
             [req.params.id]
         );
 

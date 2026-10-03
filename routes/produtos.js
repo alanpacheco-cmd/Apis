@@ -5,11 +5,43 @@ const db = require('../config/database');
 
 const { validarCampos, validarId } = require('../middleware/validar');
 
+function validarDadosProduto(nome, preco, estoque) {
+    if (
+        typeof nome !== 'string' ||
+        nome.trim() === ''
+    ) {
+        return 'O nome do produto é obrigatório.';
+    }
+
+    const precoNumero = Number(preco);
+    const estoqueNumero = Number(estoque);
+
+    if (
+        preco === '' ||
+        !Number.isFinite(precoNumero) ||
+        precoNumero < 0
+    ) {
+        return 'O preço deve ser um número válido maior ou igual a zero.';
+    }
+
+    if (
+        estoque === '' ||
+        !Number.isInteger(estoqueNumero) ||
+        estoqueNumero < 0
+    ) {
+        return 'O estoque deve ser um número inteiro maior ou igual a zero.';
+    }
+
+    return null;
+}
+
 // Listar todos os produtos
 router.get('/', async (req, res, next) => {
     try {
         const [produtos] = await db.query(
-            'SELECT id, nome, descricao, preco, estoque, criado_em FROM produtos ORDER BY id'
+            `SELECT id, nome, descricao, preco, estoque, criado_em
+             FROM produtos
+             ORDER BY id`
         );
 
         res.status(200).json(produtos);
@@ -46,36 +78,37 @@ router.post(
     validarCampos(['nome', 'preco', 'estoque']),
     async (req, res, next) => {
         try {
-            const { nome, descricao, preco, estoque } = req.body;
+            const {
+                nome,
+                descricao,
+                preco,
+                estoque
+            } = req.body;
+
+            const erro = validarDadosProduto(
+                nome,
+                preco,
+                estoque
+            );
+
+            if (erro) {
+                return res.status(400).json({
+                    erro
+                });
+            }
 
             const precoNumero = Number(preco);
             const estoqueNumero = Number(estoque);
-
-            if (
-                !Number.isFinite(precoNumero) ||
-                precoNumero < 0
-            ) {
-                return res.status(400).json({
-                    erro: 'O preço deve ser um número válido maior ou igual a zero.'
-                });
-            }
-
-            if (
-                !Number.isInteger(estoqueNumero) ||
-                estoqueNumero < 0
-            ) {
-                return res.status(400).json({
-                    erro: 'O estoque deve ser um número inteiro maior ou igual a zero.'
-                });
-            }
 
             const [resultado] = await db.query(
                 `INSERT INTO produtos
                 (nome, descricao, preco, estoque)
                 VALUES (?, ?, ?, ?)`,
                 [
-                    nome,
-                    descricao || null,
+                    nome.trim(),
+                    typeof descricao === 'string'
+                        ? descricao.trim() || null
+                        : null,
                     precoNumero,
                     estoqueNumero
                 ]
@@ -102,47 +135,53 @@ router.put(
     validarCampos(['nome', 'preco', 'estoque']),
     async (req, res, next) => {
         try {
-            const { nome, descricao, preco, estoque } = req.body;
+            const {
+                nome,
+                descricao,
+                preco,
+                estoque
+            } = req.body;
+
+            const erro = validarDadosProduto(
+                nome,
+                preco,
+                estoque
+            );
+
+            if (erro) {
+                return res.status(400).json({
+                    erro
+                });
+            }
+
+            const [existente] = await db.query(
+                'SELECT id FROM produtos WHERE id = ?',
+                [req.params.id]
+            );
+
+            if (existente.length === 0) {
+                return res.status(404).json({
+                    erro: 'Produto não encontrado.'
+                });
+            }
 
             const precoNumero = Number(preco);
             const estoqueNumero = Number(estoque);
 
-            if (
-                !Number.isFinite(precoNumero) ||
-                precoNumero < 0
-            ) {
-                return res.status(400).json({
-                    erro: 'O preço deve ser um número válido maior ou igual a zero.'
-                });
-            }
-
-            if (
-                !Number.isInteger(estoqueNumero) ||
-                estoqueNumero < 0
-            ) {
-                return res.status(400).json({
-                    erro: 'O estoque deve ser um número inteiro maior ou igual a zero.'
-                });
-            }
-
-            const [resultado] = await db.query(
+            await db.query(
                 `UPDATE produtos
                  SET nome = ?, descricao = ?, preco = ?, estoque = ?
                  WHERE id = ?`,
                 [
-                    nome,
-                    descricao || null,
+                    nome.trim(),
+                    typeof descricao === 'string'
+                        ? descricao.trim() || null
+                        : null,
                     precoNumero,
                     estoqueNumero,
                     req.params.id
                 ]
             );
-
-            if (resultado.affectedRows === 0) {
-                return res.status(404).json({
-                    erro: 'Produto não encontrado.'
-                });
-            }
 
             const [produtos] = await db.query(
                 `SELECT id, nome, descricao, preco, estoque, criado_em
@@ -173,8 +212,62 @@ router.patch('/:id', validarId, async (req, res, next) => {
 
         for (const campo of camposPermitidos) {
             if (req.body[campo] !== undefined) {
+                let valor = req.body[campo];
+
+                if (
+                    typeof valor === 'string' &&
+                    valor.trim() === '' &&
+                    campo !== 'descricao'
+                ) {
+                    return res.status(400).json({
+                        erro: `O campo '${campo}' não pode ficar vazio.`
+                    });
+                }
+
+                if (campo === 'nome') {
+                    valor = valor.trim();
+                }
+
+                if (campo === 'descricao') {
+                    valor = typeof valor === 'string'
+                        ? valor.trim() || null
+                        : valor;
+                }
+
+                if (campo === 'preco') {
+                    const precoNumero = Number(valor);
+
+                    if (
+                        valor === '' ||
+                        !Number.isFinite(precoNumero) ||
+                        precoNumero < 0
+                    ) {
+                        return res.status(400).json({
+                            erro: 'O preço deve ser um número válido maior ou igual a zero.'
+                        });
+                    }
+
+                    valor = precoNumero;
+                }
+
+                if (campo === 'estoque') {
+                    const estoqueNumero = Number(valor);
+
+                    if (
+                        valor === '' ||
+                        !Number.isInteger(estoqueNumero) ||
+                        estoqueNumero < 0
+                    ) {
+                        return res.status(400).json({
+                            erro: 'O estoque deve ser um número inteiro maior ou igual a zero.'
+                        });
+                    }
+
+                    valor = estoqueNumero;
+                }
+
                 campos.push(`${campo} = ?`);
-                valores.push(req.body[campo]);
+                valores.push(valor);
             }
         }
 
@@ -184,54 +277,25 @@ router.patch('/:id', validarId, async (req, res, next) => {
             });
         }
 
-        if (req.body.preco !== undefined) {
-            const precoNumero = Number(req.body.preco);
+        const [existente] = await db.query(
+            'SELECT id FROM produtos WHERE id = ?',
+            [req.params.id]
+        );
 
-            if (
-                !Number.isFinite(precoNumero) ||
-                precoNumero < 0
-            ) {
-                return res.status(400).json({
-                    erro: 'O preço deve ser um número válido maior ou igual a zero.'
-                });
-            }
-
-            valores[
-                campos.indexOf('preco = ?')
-            ] = precoNumero;
-        }
-
-        if (req.body.estoque !== undefined) {
-            const estoqueNumero = Number(req.body.estoque);
-
-            if (
-                !Number.isInteger(estoqueNumero) ||
-                estoqueNumero < 0
-            ) {
-                return res.status(400).json({
-                    erro: 'O estoque deve ser um número inteiro maior ou igual a zero.'
-                });
-            }
-
-            valores[
-                campos.indexOf('estoque = ?')
-            ] = estoqueNumero;
+        if (existente.length === 0) {
+            return res.status(404).json({
+                erro: 'Produto não encontrado.'
+            });
         }
 
         valores.push(req.params.id);
 
-        const [resultado] = await db.query(
+        await db.query(
             `UPDATE produtos
              SET ${campos.join(', ')}
              WHERE id = ?`,
             valores
         );
-
-        if (resultado.affectedRows === 0) {
-            return res.status(404).json({
-                erro: 'Produto não encontrado.'
-            });
-        }
 
         const [produtos] = await db.query(
             `SELECT id, nome, descricao, preco, estoque, criado_em
